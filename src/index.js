@@ -1,77 +1,101 @@
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import gsap from 'gsap'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { TextureLoader } from 'three';
-
 
 window.Webflow ||= [];
 window.Webflow.push(() => {
-  init3d();
+  // console.log('hello');
+  init3D();
 });
 
-function init3d() {
-    const viewport = document.querySelector('[data-3d="c"]')
-    console.log(viewport);
+// Init Function
+function init3D() {
+  // select container
+  const viewport = document.querySelector('[data-3d="c"]');
+  // console.log(viewport);
 
-    // renderer
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setSize( viewport.clientWidth, viewport.clientHeight );
-    viewport.appendChild( renderer.domElement );
+/*------------------------------
+  Scene, Camera, Renderer
+  ------------------------------*/
+  const scene = new THREE.Scene();
 
-    // camera
-    const camera = new THREE.PerspectiveCamera( 
-        75, 
-        viewport.clientWidth / viewport.clientHeight,
-        0.1,
-        100
-    );
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.z = 1;
 
-    camera.position.y = 0;
-    camera.position.z = 5;
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  viewport.appendChild(renderer.domElement);
 
-     // controls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enabled = false;
-    // controls.autoRotate = false;
-    // controls.enableDamping = false;
-    // controls.dampingFactor = 0.05;
+  /*------------------------------
+  Object
+  ------------------------------*/
+  const geometry = new THREE.PlaneGeometry(1, 1, 32, 32);
+  const material = new THREE.ShaderMaterial({
+    vertexShader: `
+      varying vec2 vUv;
 
-    // scene
-    const scene = new THREE.Scene();
+      void main() {
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 
-    //geometry
-    const geometry = new THREE.BoxGeometry(2, 2, 2);
-    const material = new THREE.MeshBasicMaterial( { 
-      color: 0xfffff,
-    } );
-    const cube = new THREE.Mesh( geometry, material );
-    scene.add( cube );
+        vUv = uv;
+      }
+    `,
+    fragmentShader: ` 
+      varying vec2 vUv;
 
-    //rendering
-    function animate() {
-        requestAnimationFrame( animate );
+      void main() {
+        float strength = distance(vUv, vec2(0.5));
 
-        // cube.rotation.x += 0.01;
-        // cube.rotation.y += 0.01;
+        gl_FragColor = vec4(strength, strength, strength, 1.0);
+      }
+    `
+  });
+  const cube = new THREE.Mesh(geometry, material);
+  scene.add(cube);
 
-        controls.update();
 
-        renderer.render( scene, camera );
-      
-      };
-      animate();
+  /*------------------------------
+  Controls
+  ------------------------------*/
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enabled = false
+  // controls.autoRotate = true;
+  // controls.enableDamping = true;
+  // controls.dampingFactor = 0.05;
 
-    //resize
-    function onWindowResize() {
+
+  /*------------------------------
+  Loop
+  ------------------------------*/
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+
+    // cube.rotation.x += 0.01;
+    // cube.rotation.y += 0.01;
+    renderer.render(scene, camera);
+  }
+
+  animate();
+
+  /*------------------------------
+  Resize
+  ------------------------------*/
+  function onWindowResize() {
     camera.aspect = viewport.clientWidth / viewport.clientHeight;
     camera.updateProjectionMatrix();
     renderer.setSize( viewport.clientWidth, viewport.clientHeight );
     }
     window.addEventListener( 'resize', onWindowResize, false );
+  
+   /*------------------------------
+  Mouse Move
+  ------------------------------*/
 
-    //mouse move
-    function onMouseMove(e) {
+  function onMouseMove(e) {
     const x = e.clientX
     const y = e.clientY
     
@@ -84,55 +108,59 @@ function init3d() {
 }
 
 
-    // //load 3d async
+//   /*------------------------------
+//   Load 3d async
+//   ------------------------------*/
+//   const assets = load();
+//   assets.then((data) => {
+//     console.log(data, data.robot);
 
-    // const assets = load();
-    // assets.then((data) => {
-    // console.log(data, data.model);
+//     data.robot.traverse((child) => {
+//       if (child.isMesh) {
+//         child.material = new THREE.MeshBasicMaterial();
+//         child.material.map = data.texture;
+//       }
+//     });
 
-    // data.model.traverse((child) => {
-    //     if (child.isMesh) {
-    //         child.material = new THREE.MeshBasicMaterial();
-    //         child.material.map = data.texture;
-    //     }
-    // });
+//     data.robot.position.y = -1;
+//     scene.add(data.robot);
+//   });
+// }
 
-    // data.model.position.y = 1;
-    // scene.add(data.model);
-    // })
+// /*------------------------------
+//   Loader Functions
+//   ------------------------------*/
+// async function load() {
+//   const robot = await loadModel(
+//     'https://uploads-ssl.webflow.com/64102f194260e3387db26189/64108688b73a86e15101dad4_robot.glb.txt'
+//   );
 
-    // //Loader Functions
-    // async function load() {
-    // const model = await loadModel(
-    //     'https://uploads-ssl.webflow.com/63a027a7d4fdce748dd31f5b/650c58af1eb462e257fa1372_dragon.txt', 
-    // );
+//   const texture = await loadTexture(
+//     'https://uploads-ssl.webflow.com/64102f194260e3387db26189/6410867a42a4acda86412cc4_robot-texture.png'
+//   );
 
-    // const texture = await loadTexture(
-    //     'https://uploads-ssl.webflow.com/63a027a7d4fdce748dd31f5b/63a08efc0612e3a0c04bb901_Schermata%202022-12-19%20alle%2017.18.44.png', 
-    // );
-    // };
+//   return { robot, texture };
+// }
 
-    // return { model, texture };
+// const textureLoader = new TextureLoader();
+// const modelLoader = new GLTFLoader();
 
-    // const TextureLoader = new THREE.TextureLoader();
-    // const modelLoader = new GLTFLoader();
+// function loadTexture(url) {
+//   return new Promise((resolve) => {
+//     textureLoader.load(url, (data) => {
+//       data.needsUpdate = true;
+//       data.flipY = false;
 
-    // function loadTexture(url) {
-    //     return new Promise((resolve) => {
-    //         textureLoader.load(url, (data) => {
-    //             data.needsUpdate = true;
-    //             data.flipY = false;
+//       resolve(data);
+//     });
+//   });
+// }
 
-    //             resolve(data);
-    //         });
-    //     });
-    // }
-
-    // function loadModel(url, id) {
-    //     return new Promise((resolve, reject) => {
-    //         modelLoader.load(url, (gltf) => {
-    //             const result = gltf.scene;
-    //             resolve(result);
-    //         });
-    //     });
-    // }
+// function loadModel(url, id) {
+//   return new Promise((resolve, reject) => {
+//     modelLoader.load(url, (gltf) => {
+//       const result = gltf.scene;
+//       resolve(result);
+//     });
+//   });
+// }
